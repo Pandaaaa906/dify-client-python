@@ -27,6 +27,8 @@ class StreamEvent(StrEnum):
     ERROR = "error"
     PING = "ping"
     TTS_MESSAGE_END = "tts_message_end"
+    PARALLEL_BRANCH_STARTED = "parallel_branch_started"
+    PARALLEL_BRANCH_FINISHED = "parallel_branch_finished"
     
     @classmethod
     def new(cls, event: Union["StreamEvent", str]) -> "StreamEvent":
