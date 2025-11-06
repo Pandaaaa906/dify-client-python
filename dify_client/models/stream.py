@@ -30,18 +30,19 @@ class StreamEvent(StrEnum):
     PARALLEL_BRANCH_STARTED = "parallel_branch_started"
     PARALLEL_BRANCH_FINISHED = "parallel_branch_finished"
     NODE_RETRY = "node_retry"
+    AGENT_LOG = "agent_log"
 
     @classmethod
     def new(cls, event: Union["StreamEvent", str]) -> "StreamEvent":
         if isinstance(event, cls):
             return event
-        return utils.str_to_enum(cls, event)
+        return utils.str_to_enum(cls, event, ignore_not_found=True, enum_default=event)
 
 
 class StreamResponse(BaseModel):
     model_config = ConfigDict(extra='allow')
 
-    event: StreamEvent
+    event: StreamEvent | str
     task_id: Optional[str] = ""
 
     @field_validator("event", mode="before")
