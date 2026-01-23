@@ -69,7 +69,7 @@ class MessageEndStreamResponse(StreamResponse):
     message_id: str
     conversation_id: Optional[str] = ""
     created_at: int  # unix timestamp seconds
-    metadata: Optional[Metadata]
+    metadata: Optional[Metadata] = None
 
 
 class MessageReplaceStreamResponse(MessageStreamResponse):
@@ -108,7 +108,7 @@ class WorkflowsStreamResponse(StreamResponse):
         WorkflowFinishedData,
         NodeStartedData,
         NodeFinishedData]
-    ]
+    ] = None
 
 
 class ChatWorkflowsStreamResponse(WorkflowsStreamResponse):
