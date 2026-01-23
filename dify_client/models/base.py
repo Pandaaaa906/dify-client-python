@@ -40,10 +40,10 @@ class CompletionInputs(BaseModel):
 class File(BaseModel):
     type: FileType
     transfer_method: TransferMethod
-    url: Optional[str]
+    url: Optional[str] = None
     # Uploaded file ID, which must be obtained by uploading through the File Upload API in advance
     # (when the transfer method is local_file)
-    upload_file_id: Optional[str]
+    upload_file_id: Optional[str] = None
 
 
 class Usage(BaseModel):
