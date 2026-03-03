@@ -13,9 +13,10 @@ class Mode(StrEnum):
     COMPLETION = "completion"
     ADAVANCED_CHAT = "advanced-chat"
 
+
 class ResponseMode(StrEnum):
-    STREAMING = 'streaming'
-    BLOCKING = 'blocking'
+    STREAMING = "streaming"
+    BLOCKING = "blocking"
 
 
 class FileType(StrEnum):
@@ -32,7 +33,7 @@ class TransferMethod(StrEnum):
 # each value being the specific value for that variable.
 # The text generation application requires at least one key/value pair to be inputted.
 class CompletionInputs(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
     # Required The input text, the content to be processed.
     query: str
 

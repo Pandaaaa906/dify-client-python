@@ -8,7 +8,12 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 from dify_client import utils
 from dify_client.models.base import Metadata, ErrorResponse
-from dify_client.models.workflow import WorkflowStartedData, WorkflowFinishedData, NodeStartedData, NodeFinishedData
+from dify_client.models.workflow import (
+    WorkflowStartedData,
+    WorkflowFinishedData,
+    NodeStartedData,
+    NodeFinishedData,
+)
 
 STREAM_EVENT_KEY = "event"
 
@@ -40,7 +45,7 @@ class StreamEvent(StrEnum):
 
 
 class StreamResponse(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
 
     event: StreamEvent | str
     task_id: Optional[str] = ""
@@ -103,11 +108,10 @@ class MessageFileStreamResponse(StreamResponse):
 
 class WorkflowsStreamResponse(StreamResponse):
     workflow_run_id: str
-    data: Optional[Union[
-        WorkflowStartedData,
-        WorkflowFinishedData,
-        NodeStartedData,
-        NodeFinishedData]
+    data: Optional[
+        Union[
+            WorkflowStartedData, WorkflowFinishedData, NodeStartedData, NodeFinishedData
+        ]
     ] = None
 
 

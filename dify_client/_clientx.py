@@ -7,13 +7,16 @@ except ImportError:
 try:
     from http import HTTPMethod
 except ImportError:
+
     class HTTPMethod(StrEnum):
         GET = "GET"
         POST = "POST"
         PUT = "PUT"
         DELETE = "DELETE"
 
+
 import httpx
+
 # noinspection PyProtectedMember
 import httpx._types as types
 from httpx_sse import connect_sse, ServerSentEvent, aconnect_sse
@@ -50,15 +53,18 @@ class Client(BaseModel):
     api_key: str
     api_base: Optional[str] = "https://api.dify.ai/v1"
 
-    def request(self, endpoint: str, method: str,
-                content: Optional[types.RequestContent] = None,
-                data: Optional[types.RequestData] = None,
-                files: Optional[types.RequestFiles] = None,
-                json: Optional[Any] = None,
-                params: Optional[types.QueryParamTypes] = None,
-                headers: Optional[Mapping[str, str]] = None,
-                **kwargs: object,
-                ) -> httpx.Response:
+    def request(
+        self,
+        endpoint: str,
+        method: str,
+        content: Optional[types.RequestContent] = None,
+        data: Optional[types.RequestData] = None,
+        files: Optional[types.RequestFiles] = None,
+        json: Optional[Any] = None,
+        params: Optional[types.QueryParamTypes] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        **kwargs: object,
+    ) -> httpx.Response:
         """
         Sends a synchronous HTTP request to the specified endpoint.
 
@@ -84,20 +90,32 @@ class Client(BaseModel):
             merged_headers.update(headers)
         self._prepare_auth_headers(merged_headers)
 
-        response = _httpx_client.request(method, endpoint, content=content, data=data, files=files, json=json,
-                                         params=params, headers=merged_headers, **kwargs)
+        response = _httpx_client.request(
+            method,
+            endpoint,
+            content=content,
+            data=data,
+            files=files,
+            json=json,
+            params=params,
+            headers=merged_headers,
+            **kwargs,
+        )
         errors.raise_for_status(response)
         return response
 
-    def request_stream(self, endpoint: str, method: str,
-                       content: Optional[types.RequestContent] = None,
-                       data: Optional[types.RequestData] = None,
-                       files: Optional[types.RequestFiles] = None,
-                       json: Optional[Any] = None,
-                       params: Optional[types.QueryParamTypes] = None,
-                       headers: Optional[Mapping[str, str]] = None,
-                       **kwargs,
-                       ) -> Iterator[ServerSentEvent]:
+    def request_stream(
+        self,
+        endpoint: str,
+        method: str,
+        content: Optional[types.RequestContent] = None,
+        data: Optional[types.RequestData] = None,
+        files: Optional[types.RequestFiles] = None,
+        json: Optional[Any] = None,
+        params: Optional[types.QueryParamTypes] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        **kwargs,
+    ) -> Iterator[ServerSentEvent]:
         """
         Opens a server-sent events (SSE) stream to the specified endpoint.
 
@@ -123,18 +141,33 @@ class Client(BaseModel):
             merged_headers.update(headers)
         self._prepare_auth_headers(merged_headers)
 
-        with connect_sse(_httpx_client, method, endpoint, headers=merged_headers,
-                         content=content, data=data, files=files, json=json, params=params, **kwargs) as event_source:
+        with connect_sse(
+            _httpx_client,
+            method,
+            endpoint,
+            headers=merged_headers,
+            content=content,
+            data=data,
+            files=files,
+            json=json,
+            params=params,
+            **kwargs,
+        ) as event_source:
             if not _check_stream_content_type(event_source.response):
                 event_source.response.read()
                 errors.raise_for_status(event_source.response)
             for sse in event_source.iter_sse():
                 errors.raise_for_status(sse)
-                if sse.event in IGNORED_STREAM_EVENTS or sse.data in IGNORED_STREAM_EVENTS:
+                if (
+                    sse.event in IGNORED_STREAM_EVENTS
+                    or sse.data in IGNORED_STREAM_EVENTS
+                ):
                     continue
                 yield sse
 
-    def feedback_messages(self, message_id: str, req: models.FeedbackRequest, **kwargs) -> models.FeedbackResponse:
+    def feedback_messages(
+        self, message_id: str, req: models.FeedbackRequest, **kwargs
+    ) -> models.FeedbackResponse:
         """
         Submits feedback for a specific message.
 
@@ -154,7 +187,9 @@ class Client(BaseModel):
         )
         return models.FeedbackResponse(**response.json())
 
-    def suggest_messages(self, message_id: str, req: models.ChatSuggestRequest, **kwargs) -> models.ChatSuggestResponse:
+    def suggest_messages(
+        self, message_id: str, req: models.ChatSuggestRequest, **kwargs
+    ) -> models.ChatSuggestResponse:
         """
         Retrieves suggested messages based on a specific message.
 
@@ -174,8 +209,9 @@ class Client(BaseModel):
         )
         return models.ChatSuggestResponse(**response.json())
 
-    def upload_files(self, file: types.FileTypes, req: models.UploadFileRequest,
-                     **kwargs) -> models.UploadFileResponse:
+    def upload_files(
+        self, file: types.FileTypes, req: models.UploadFileRequest, **kwargs
+    ) -> models.UploadFileResponse:
         """
         Uploads a file to be used in subsequent requests.
 
@@ -197,8 +233,9 @@ class Client(BaseModel):
         )
         return models.UploadFileResponse(**response.json())
 
-    def completion_messages(self, req: models.CompletionRequest, **kwargs) \
-            -> Union[models.CompletionResponse, Iterator[models.CompletionStreamResponse]]:
+    def completion_messages(
+        self, req: models.CompletionRequest, **kwargs
+    ) -> Union[models.CompletionResponse, Iterator[models.CompletionStreamResponse]]:
         """
         Sends a request to generate a completion or a series of completions based on the provided input.
 
@@ -213,7 +250,9 @@ class Client(BaseModel):
             return self._completion_messages_stream(req, **kwargs)
         raise ValueError(f"Invalid request_mode: {req.response_mode}")
 
-    def _completion_messages(self, req: models.CompletionRequest, **kwargs) -> models.CompletionResponse:
+    def _completion_messages(
+        self, req: models.CompletionRequest, **kwargs
+    ) -> models.CompletionResponse:
         response = self.request(
             self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
             HTTPMethod.POST,
@@ -222,8 +261,9 @@ class Client(BaseModel):
         )
         return models.CompletionResponse(**response.json())
 
-    def _completion_messages_stream(self, req: models.CompletionRequest, **kwargs) \
-            -> Iterator[models.CompletionStreamResponse]:
+    def _completion_messages_stream(
+        self, req: models.CompletionRequest, **kwargs
+    ) -> Iterator[models.CompletionStreamResponse]:
         event_source = self.request_stream(
             self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
             HTTPMethod.POST,
@@ -233,17 +273,24 @@ class Client(BaseModel):
         for sse in event_source:
             yield models.build_completion_stream_response(sse.json())
 
-    def stop_completion_messages(self, task_id: str, req: models.StopRequest, **kwargs) -> models.StopResponse:
+    def stop_completion_messages(
+        self, task_id: str, req: models.StopRequest, **kwargs
+    ) -> models.StopResponse:
         """
         Sends a request to stop a streaming completion task.
 
         Returns:
             A `StopResponse` object indicating the success of the operation.
         """
-        return self._stop_stream(self._prepare_url(ENDPOINT_STOP_COMPLETION_MESSAGES, task_id=task_id), req, **kwargs)
+        return self._stop_stream(
+            self._prepare_url(ENDPOINT_STOP_COMPLETION_MESSAGES, task_id=task_id),
+            req,
+            **kwargs,
+        )
 
-    def chat_messages(self, req: models.ChatRequest, **kwargs) \
-            -> Union[models.ChatResponse, Iterator[models.ChatStreamResponse]]:
+    def chat_messages(
+        self, req: models.ChatRequest, **kwargs
+    ) -> Union[models.ChatResponse, Iterator[models.ChatStreamResponse]]:
         """
         Sends a request to generate a chat message or a series of chat messages based on the provided input.
 
@@ -267,7 +314,9 @@ class Client(BaseModel):
         )
         return models.ChatResponse(**response.json())
 
-    def _chat_messages_stream(self, req: models.ChatRequest, **kwargs) -> Iterator[models.ChatStreamResponse]:
+    def _chat_messages_stream(
+        self, req: models.ChatRequest, **kwargs
+    ) -> Iterator[models.ChatStreamResponse]:
         event_source = self.request_stream(
             self._prepare_url(ENDPOINT_CHAT_MESSAGES),
             HTTPMethod.POST,
@@ -277,17 +326,26 @@ class Client(BaseModel):
         for sse in event_source:
             yield models.build_chat_stream_response(sse.json())
 
-    def stop_chat_messages(self, task_id: str, req: models.StopRequest, **kwargs) -> models.StopResponse:
+    def stop_chat_messages(
+        self, task_id: str, req: models.StopRequest, **kwargs
+    ) -> models.StopResponse:
         """
         Sends a request to stop a streaming chat task.
 
         Returns:
             A `StopResponse` object indicating the success of the operation.
         """
-        return self._stop_stream(self._prepare_url(ENDPOINT_STOP_CHAT_MESSAGES, task_id=task_id), req, **kwargs)
+        return self._stop_stream(
+            self._prepare_url(ENDPOINT_STOP_CHAT_MESSAGES, task_id=task_id),
+            req,
+            **kwargs,
+        )
 
-    def run_workflows(self, req: models.WorkflowsRunRequest, **kwargs) \
-            -> Union[models.WorkflowsRunResponse, Iterator[models.WorkflowsRunStreamResponse]]:
+    def run_workflows(
+        self, req: models.WorkflowsRunRequest, **kwargs
+    ) -> Union[
+        models.WorkflowsRunResponse, Iterator[models.WorkflowsRunStreamResponse]
+    ]:
         """
         Initiates the execution of a workflow, which can consist of multiple steps and actions.
 
@@ -303,7 +361,9 @@ class Client(BaseModel):
             return self._run_workflows_stream(req, **kwargs)
         raise ValueError(f"Invalid request_mode: {req.response_mode}")
 
-    def _run_workflows(self, req: models.WorkflowsRunRequest, **kwargs) -> models.WorkflowsRunResponse:
+    def _run_workflows(
+        self, req: models.WorkflowsRunRequest, **kwargs
+    ) -> models.WorkflowsRunResponse:
         response = self.request(
             self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
             HTTPMethod.POST,
@@ -312,8 +372,9 @@ class Client(BaseModel):
         )
         return models.WorkflowsRunResponse(**response.json())
 
-    def _run_workflows_stream(self, req: models.WorkflowsRunRequest, **kwargs) \
-            -> Iterator[models.WorkflowsRunStreamResponse]:
+    def _run_workflows_stream(
+        self, req: models.WorkflowsRunRequest, **kwargs
+    ) -> Iterator[models.WorkflowsRunStreamResponse]:
         event_source = self.request_stream(
             self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
             HTTPMethod.POST,
@@ -323,16 +384,22 @@ class Client(BaseModel):
         for sse in event_source:
             yield models.build_workflows_stream_response(sse.json())
 
-    def stop_workflows(self, task_id: str, req: models.StopRequest, **kwargs) -> models.StopResponse:
+    def stop_workflows(
+        self, task_id: str, req: models.StopRequest, **kwargs
+    ) -> models.StopResponse:
         """
         Sends a request to stop a streaming workflow task.
 
         Returns:
             A `StopResponse` object indicating the success of the operation.
         """
-        return self._stop_stream(self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id), req, **kwargs)
+        return self._stop_stream(
+            self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id), req, **kwargs
+        )
 
-    def _stop_stream(self, endpoint: str, req: models.StopRequest, **kwargs) -> models.StopResponse:
+    def _stop_stream(
+        self, endpoint: str, req: models.StopRequest, **kwargs
+    ) -> models.StopResponse:
         response = self.request(
             endpoint,
             HTTPMethod.POST,
@@ -353,15 +420,18 @@ class AsyncClient(BaseModel):
     api_key: str
     api_base: Optional[str] = "https://api.dify.ai/v1"
 
-    async def arequest(self, endpoint: str, method: str,
-                       content: Optional[types.RequestContent] = None,
-                       data: Optional[types.RequestData] = None,
-                       files: Optional[types.RequestFiles] = None,
-                       json: Optional[Any] = None,
-                       params: Optional[types.QueryParamTypes] = None,
-                       headers: Optional[Mapping[str, str]] = None,
-                       **kwargs,
-                       ) -> httpx.Response:
+    async def arequest(
+        self,
+        endpoint: str,
+        method: str,
+        content: Optional[types.RequestContent] = None,
+        data: Optional[types.RequestData] = None,
+        files: Optional[types.RequestFiles] = None,
+        json: Optional[Any] = None,
+        params: Optional[types.QueryParamTypes] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        **kwargs,
+    ) -> httpx.Response:
         """
         Asynchronously sends a request to the specified Dify API endpoint.
 
@@ -387,20 +457,32 @@ class AsyncClient(BaseModel):
             merged_headers.update(headers)
         self._prepare_auth_headers(merged_headers)
 
-        response = await _async_httpx_client.request(method, endpoint, content=content, data=data, files=files,
-                                                     json=json, params=params, headers=merged_headers, **kwargs)
+        response = await _async_httpx_client.request(
+            method,
+            endpoint,
+            content=content,
+            data=data,
+            files=files,
+            json=json,
+            params=params,
+            headers=merged_headers,
+            **kwargs,
+        )
         errors.raise_for_status(response)
         return response
 
-    async def arequest_stream(self, endpoint: str, method: str,
-                              content: Optional[types.RequestContent] = None,
-                              data: Optional[types.RequestData] = None,
-                              files: Optional[types.RequestFiles] = None,
-                              json: Optional[Any] = None,
-                              params: Optional[types.QueryParamTypes] = None,
-                              headers: Optional[Mapping[str, str]] = None,
-                              **kwargs,
-                              ) -> AsyncIterator[ServerSentEvent]:
+    async def arequest_stream(
+        self,
+        endpoint: str,
+        method: str,
+        content: Optional[types.RequestContent] = None,
+        data: Optional[types.RequestData] = None,
+        files: Optional[types.RequestFiles] = None,
+        json: Optional[Any] = None,
+        params: Optional[types.QueryParamTypes] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        **kwargs,
+    ) -> AsyncIterator[ServerSentEvent]:
         """
         Asynchronously establishes a streaming connection to the specified Dify API endpoint.
 
@@ -426,20 +508,33 @@ class AsyncClient(BaseModel):
             merged_headers.update(headers)
         self._prepare_auth_headers(merged_headers)
 
-        async with aconnect_sse(_async_httpx_client, method, endpoint, headers=merged_headers,
-                                content=content, data=data, files=files, json=json, params=params,
-                                **kwargs) as event_source:
+        async with aconnect_sse(
+            _async_httpx_client,
+            method,
+            endpoint,
+            headers=merged_headers,
+            content=content,
+            data=data,
+            files=files,
+            json=json,
+            params=params,
+            **kwargs,
+        ) as event_source:
             if not _check_stream_content_type(event_source.response):
                 await event_source.response.aread()
                 errors.raise_for_status(event_source.response)
             async for sse in event_source.aiter_sse():
                 errors.raise_for_status(sse)
-                if sse.event in IGNORED_STREAM_EVENTS or sse.data in IGNORED_STREAM_EVENTS:
+                if (
+                    sse.event in IGNORED_STREAM_EVENTS
+                    or sse.data in IGNORED_STREAM_EVENTS
+                ):
                     continue
                 yield sse
 
-    async def afeedback_messages(self, message_id: str, req: models.FeedbackRequest, **kwargs) \
-            -> models.FeedbackResponse:
+    async def afeedback_messages(
+        self, message_id: str, req: models.FeedbackRequest, **kwargs
+    ) -> models.FeedbackResponse:
         """
         Submits feedback for a specific message.
 
@@ -459,8 +554,9 @@ class AsyncClient(BaseModel):
         )
         return models.FeedbackResponse(**response.json())
 
-    async def asuggest_messages(self, message_id: str, req: models.ChatSuggestRequest, **kwargs) \
-            -> models.ChatSuggestResponse:
+    async def asuggest_messages(
+        self, message_id: str, req: models.ChatSuggestRequest, **kwargs
+    ) -> models.ChatSuggestResponse:
         """
         Retrieves suggested messages based on a specific message.
 
@@ -480,8 +576,9 @@ class AsyncClient(BaseModel):
         )
         return models.ChatSuggestResponse(**response.json())
 
-    async def aupload_files(self, file: types.FileTypes, req: models.UploadFileRequest, **kwargs) \
-            -> models.UploadFileResponse:
+    async def aupload_files(
+        self, file: types.FileTypes, req: models.UploadFileRequest, **kwargs
+    ) -> models.UploadFileResponse:
         """
         Uploads a file to be used in subsequent requests.
 
@@ -503,8 +600,11 @@ class AsyncClient(BaseModel):
         )
         return models.UploadFileResponse(**response.json())
 
-    async def acompletion_messages(self, req: models.CompletionRequest, **kwargs) \
-            -> Union[models.CompletionResponse, AsyncIterator[models.CompletionStreamResponse]]:
+    async def acompletion_messages(
+        self, req: models.CompletionRequest, **kwargs
+    ) -> Union[
+        models.CompletionResponse, AsyncIterator[models.CompletionStreamResponse]
+    ]:
         """
         Sends a request to generate a completion or a series of completions based on the provided input.
 
@@ -519,7 +619,9 @@ class AsyncClient(BaseModel):
             return self._acompletion_messages_stream(req, **kwargs)
         raise ValueError(f"Invalid request_mode: {req.response_mode}")
 
-    async def _acompletion_messages(self, req: models.CompletionRequest, **kwargs) -> models.CompletionResponse:
+    async def _acompletion_messages(
+        self, req: models.CompletionRequest, **kwargs
+    ) -> models.CompletionResponse:
         response = await self.arequest(
             self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
             HTTPMethod.POST,
@@ -528,16 +630,20 @@ class AsyncClient(BaseModel):
         )
         return models.CompletionResponse(**response.json())
 
-    async def _acompletion_messages_stream(self, req: models.CompletionRequest, **kwargs) \
-            -> AsyncIterator[models.CompletionStreamResponse]:
+    async def _acompletion_messages_stream(
+        self, req: models.CompletionRequest, **kwargs
+    ) -> AsyncIterator[models.CompletionStreamResponse]:
         async for sse in self.arequest_stream(
-                self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
-                HTTPMethod.POST,
-                json=req.model_dump(),
-                **kwargs):
+            self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
+            HTTPMethod.POST,
+            json=req.model_dump(),
+            **kwargs,
+        ):
             yield models.build_completion_stream_response(sse.json())
 
-    async def astop_completion_messages(self, task_id: str, req: models.StopRequest, **kwargs) -> models.StopResponse:
+    async def astop_completion_messages(
+        self, task_id: str, req: models.StopRequest, **kwargs
+    ) -> models.StopResponse:
         """
         Sends a request to stop a streaming completion task.
 
@@ -545,10 +651,14 @@ class AsyncClient(BaseModel):
             A `StopResponse` object indicating the success of the operation.
         """
         return await self._astop_stream(
-            self._prepare_url(ENDPOINT_STOP_COMPLETION_MESSAGES, task_id=task_id), req, **kwargs)
+            self._prepare_url(ENDPOINT_STOP_COMPLETION_MESSAGES, task_id=task_id),
+            req,
+            **kwargs,
+        )
 
-    async def achat_messages(self, req: models.ChatRequest, **kwargs) \
-            -> Union[models.ChatResponse, AsyncIterator[models.ChatStreamResponse]]:
+    async def achat_messages(
+        self, req: models.ChatRequest, **kwargs
+    ) -> Union[models.ChatResponse, AsyncIterator[models.ChatStreamResponse]]:
         """
         Sends a request to generate a chat message or a series of chat messages based on the provided input.
 
@@ -563,7 +673,9 @@ class AsyncClient(BaseModel):
             return self._achat_messages_stream(req, **kwargs)
         raise ValueError(f"Invalid request_mode: {req.response_mode}")
 
-    async def _achat_messages(self, req: models.ChatRequest, **kwargs) -> models.ChatResponse:
+    async def _achat_messages(
+        self, req: models.ChatRequest, **kwargs
+    ) -> models.ChatResponse:
         response = await self.arequest(
             self._prepare_url(ENDPOINT_CHAT_MESSAGES),
             HTTPMethod.POST,
@@ -572,26 +684,37 @@ class AsyncClient(BaseModel):
         )
         return models.ChatResponse(**response.json())
 
-    async def _achat_messages_stream(self, req: models.ChatRequest, **kwargs) \
-            -> AsyncIterator[models.ChatStreamResponse]:
+    async def _achat_messages_stream(
+        self, req: models.ChatRequest, **kwargs
+    ) -> AsyncIterator[models.ChatStreamResponse]:
         async for sse in self.arequest_stream(
-                self._prepare_url(ENDPOINT_CHAT_MESSAGES),
-                HTTPMethod.POST,
-                json=req.model_dump(),
-                **kwargs):
+            self._prepare_url(ENDPOINT_CHAT_MESSAGES),
+            HTTPMethod.POST,
+            json=req.model_dump(),
+            **kwargs,
+        ):
             yield models.build_chat_stream_response(sse.json())
 
-    async def astop_chat_messages(self, task_id: str, req: models.StopRequest, **kwargs) -> models.StopResponse:
+    async def astop_chat_messages(
+        self, task_id: str, req: models.StopRequest, **kwargs
+    ) -> models.StopResponse:
         """
         Sends a request to stop a streaming chat task.
 
         Returns:
             A `StopResponse` object indicating the success of the operation.
         """
-        return await self._astop_stream(self._prepare_url(ENDPOINT_STOP_CHAT_MESSAGES, task_id=task_id), req, **kwargs)
+        return await self._astop_stream(
+            self._prepare_url(ENDPOINT_STOP_CHAT_MESSAGES, task_id=task_id),
+            req,
+            **kwargs,
+        )
 
-    async def arun_workflows(self, req: models.WorkflowsRunRequest, **kwargs) \
-            -> Union[models.WorkflowsRunResponse, AsyncIterator[models.WorkflowsStreamResponse]]:
+    async def arun_workflows(
+        self, req: models.WorkflowsRunRequest, **kwargs
+    ) -> Union[
+        models.WorkflowsRunResponse, AsyncIterator[models.WorkflowsStreamResponse]
+    ]:
         """
         Initiates the execution of a workflow, which can consist of multiple steps and actions.
 
@@ -607,7 +730,9 @@ class AsyncClient(BaseModel):
             return self._arun_workflows_stream(req, **kwargs)
         raise ValueError(f"Invalid request_mode: {req.response_mode}")
 
-    async def _arun_workflows(self, req: models.WorkflowsRunRequest, **kwargs) -> models.WorkflowsRunResponse:
+    async def _arun_workflows(
+        self, req: models.WorkflowsRunRequest, **kwargs
+    ) -> models.WorkflowsRunResponse:
         response = await self.arequest(
             self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
             HTTPMethod.POST,
@@ -616,25 +741,33 @@ class AsyncClient(BaseModel):
         )
         return models.WorkflowsRunResponse(**response.json())
 
-    async def _arun_workflows_stream(self, req: models.WorkflowsRunRequest, **kwargs) \
-            -> AsyncIterator[models.WorkflowsRunStreamResponse]:
+    async def _arun_workflows_stream(
+        self, req: models.WorkflowsRunRequest, **kwargs
+    ) -> AsyncIterator[models.WorkflowsRunStreamResponse]:
         async for sse in self.arequest_stream(
-                self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
-                HTTPMethod.POST,
-                json=req.model_dump(),
-                **kwargs):
+            self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
+            HTTPMethod.POST,
+            json=req.model_dump(),
+            **kwargs,
+        ):
             yield models.build_workflows_stream_response(sse.json())
 
-    async def astop_workflows(self, task_id: str, req: models.StopRequest, **kwargs) -> models.StopResponse:
+    async def astop_workflows(
+        self, task_id: str, req: models.StopRequest, **kwargs
+    ) -> models.StopResponse:
         """
         Sends a request to stop a streaming workflow task.
 
         Returns:
             A `StopResponse` object indicating the success of the operation.
         """
-        return await self._astop_stream(self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id), req, **kwargs)
+        return await self._astop_stream(
+            self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id), req, **kwargs
+        )
 
-    async def _astop_stream(self, endpoint: str, req: models.StopRequest, **kwargs) -> models.StopResponse:
+    async def _astop_stream(
+        self, endpoint: str, req: models.StopRequest, **kwargs
+    ) -> models.StopResponse:
         response = await self.arequest(
             endpoint,
             HTTPMethod.POST,

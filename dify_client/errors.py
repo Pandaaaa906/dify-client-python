@@ -129,4 +129,6 @@ def raise_for_status(response: Union[httpx.Response, httpx_sse.ServerSentEvent])
     elif details.status == HTTPStatus.INTERNAL_SERVER_ERROR:
         raise DifyInternalServerError(details.status, details.code, details.message)
     else:
-        raise SPEC_CODE_ERRORS.get(details.code, DifyAPIError)(details.status, details.code, details.message)
+        raise SPEC_CODE_ERRORS.get(details.code, DifyAPIError)(
+            details.status, details.code, details.message
+        )
