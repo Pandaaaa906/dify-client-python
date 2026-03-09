@@ -25,7 +25,6 @@ from pydantic import BaseModel
 from dify_client import errors, models
 
 _httpx_client = httpx.Client()
-_async_httpx_client = httpx.AsyncClient()
 
 IGNORED_STREAM_EVENTS = (models.StreamEvent.PING.value,)
 
@@ -420,6 +419,9 @@ class AsyncClient(BaseModel):
     api_key: str
     api_base: Optional[str] = "https://api.dify.ai/v1"
 
+    def model_post_init(self, context: Any, /) -> None:
+        self._async_httpx_client = httpx.AsyncClient()
+
     async def arequest(
         self,
         endpoint: str,
@@ -457,7 +459,7 @@ class AsyncClient(BaseModel):
             merged_headers.update(headers)
         self._prepare_auth_headers(merged_headers)
 
-        response = await _async_httpx_client.request(
+        response = await self._async_httpx_client.request(
             method,
             endpoint,
             content=content,
@@ -509,7 +511,7 @@ class AsyncClient(BaseModel):
         self._prepare_auth_headers(merged_headers)
 
         async with aconnect_sse(
-            _async_httpx_client,
+            self._async_httpx_client,
             method,
             endpoint,
             headers=merged_headers,
