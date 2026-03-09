@@ -21,6 +21,7 @@ class ResponseMode(StrEnum):
 
 class FileType(StrEnum):
     IMAGE = "image"
+    DOCUMENT = "document"
 
 
 class TransferMethod(StrEnum):
