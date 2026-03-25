@@ -40,10 +40,18 @@ ENDPOINT_CHAT_MESSAGES = "/chat-messages"
 ENDPOINT_STOP_CHAT_MESSAGES = "/chat-messages/{task_id}/stop"
 # workflow
 ENDPOINT_RUN_WORKFLOWS = "/workflows/run"
-ENDPOINT_STOP_WORKFLOWS = "/workflows/{task_id}/stop"
+ENDPOINT_STOP_WORKFLOWS = "/workflows/tasks/{task_id}/stop"
 # audio <-> text
 ENDPOINT_TEXT_TO_AUDIO = "/text-to-audio"
 ENDPOINT_AUDIO_TO_TEXT = "/audio-to-text"
+
+
+def _completion_request_payload(req: models.CompletionRequest) -> Dict[str, Any]:
+    # Keep compatibility with historical `conversation_id` usage while matching
+    # current runtime payload shape.
+    payload = req.model_dump(exclude_none=True)
+    payload.pop("conversation_id", None)
+    return payload
 
 
 class Client(BaseModel):
@@ -191,11 +199,31 @@ class Client(BaseModel):
         response = self.request(
             self._prepare_url(ENDPOINT_FILES_UPLOAD),
             HTTPMethod.POST,
-            data=req.model_dump(),
+            data=req.model_dump(exclude_none=True),
             files=[("file", file)],
             **kwargs,
         )
         return models.UploadFileResponse(**response.json())
+
+    def audio_to_text(self, file: types.FileTypes, req: models.AudioToTextRequest,
+                      **kwargs) -> models.AudioToTextResponse:
+        response = self.request(
+            self._prepare_url(ENDPOINT_AUDIO_TO_TEXT),
+            HTTPMethod.POST,
+            data=req.model_dump(exclude_none=True),
+            files=[("file", file)],
+            **kwargs,
+        )
+        return models.AudioToTextResponse(**response.json())
+
+    def text_to_audio(self, req: models.TextToAudioRequest, **kwargs) -> bytes:
+        response = self.request(
+            self._prepare_url(ENDPOINT_TEXT_TO_AUDIO),
+            HTTPMethod.POST,
+            json=req.model_dump(exclude_none=True),
+            **kwargs,
+        )
+        return response.content
 
     def completion_messages(self, req: models.CompletionRequest, **kwargs) \
             -> Union[models.CompletionResponse, Iterator[models.CompletionStreamResponse]]:
@@ -217,7 +245,7 @@ class Client(BaseModel):
         response = self.request(
             self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=_completion_request_payload(req),
             **kwargs,
         )
         return models.CompletionResponse(**response.json())
@@ -227,7 +255,7 @@ class Client(BaseModel):
         event_source = self.request_stream(
             self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=_completion_request_payload(req),
             **kwargs,
         )
         for sse in event_source:
@@ -307,7 +335,7 @@ class Client(BaseModel):
         response = self.request(
             self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=req.model_dump(exclude_none=True),
             **kwargs,
         )
         return models.WorkflowsRunResponse(**response.json())
@@ -317,7 +345,7 @@ class Client(BaseModel):
         event_source = self.request_stream(
             self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=req.model_dump(exclude_none=True),
             **kwargs,
         )
         for sse in event_source:
@@ -497,11 +525,31 @@ class AsyncClient(BaseModel):
         response = await self.arequest(
             self._prepare_url(ENDPOINT_FILES_UPLOAD),
             HTTPMethod.POST,
-            data=req.model_dump(),
+            data=req.model_dump(exclude_none=True),
             files=[("file", file)],
             **kwargs,
         )
         return models.UploadFileResponse(**response.json())
+
+    async def aaudio_to_text(self, file: types.FileTypes, req: models.AudioToTextRequest, **kwargs) \
+            -> models.AudioToTextResponse:
+        response = await self.arequest(
+            self._prepare_url(ENDPOINT_AUDIO_TO_TEXT),
+            HTTPMethod.POST,
+            data=req.model_dump(exclude_none=True),
+            files=[("file", file)],
+            **kwargs,
+        )
+        return models.AudioToTextResponse(**response.json())
+
+    async def atext_to_audio(self, req: models.TextToAudioRequest, **kwargs) -> bytes:
+        response = await self.arequest(
+            self._prepare_url(ENDPOINT_TEXT_TO_AUDIO),
+            HTTPMethod.POST,
+            json=req.model_dump(exclude_none=True),
+            **kwargs,
+        )
+        return response.content
 
     async def acompletion_messages(self, req: models.CompletionRequest, **kwargs) \
             -> Union[models.CompletionResponse, AsyncIterator[models.CompletionStreamResponse]]:
@@ -523,7 +571,7 @@ class AsyncClient(BaseModel):
         response = await self.arequest(
             self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=_completion_request_payload(req),
             **kwargs,
         )
         return models.CompletionResponse(**response.json())
@@ -533,7 +581,7 @@ class AsyncClient(BaseModel):
         async for sse in self.arequest_stream(
                 self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
                 HTTPMethod.POST,
-                json=req.model_dump(),
+                json=_completion_request_payload(req),
                 **kwargs):
             yield models.build_completion_stream_response(sse.json())
 
@@ -611,7 +659,7 @@ class AsyncClient(BaseModel):
         response = await self.arequest(
             self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=req.model_dump(exclude_none=True),
             **kwargs,
         )
         return models.WorkflowsRunResponse(**response.json())
@@ -621,7 +669,7 @@ class AsyncClient(BaseModel):
         async for sse in self.arequest_stream(
                 self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
                 HTTPMethod.POST,
-                json=req.model_dump(),
+                json=req.model_dump(exclude_none=True),
                 **kwargs):
             yield models.build_workflows_stream_response(sse.json())
 

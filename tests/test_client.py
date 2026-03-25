@@ -1,6 +1,7 @@
 import httpx
 from httpx_sse import ServerSentEvent
 
+from dify_client import models
 from dify_client._clientx import AsyncClient, Client
 
 
@@ -79,3 +80,55 @@ def test_request_stream_ignores_ping_events(monkeypatch):
     chunks = list(client.request_stream(client._prepare_url("/chat-messages"), "POST", json={"a": 1}))
     assert len(chunks) == 1
     assert chunks[0].event == "message"
+
+
+def test_stop_workflows_uses_latest_tasks_endpoint(monkeypatch):
+    captured = {}
+
+    def fake_request(method, endpoint, **kwargs):
+        captured["endpoint"] = endpoint
+        return httpx.Response(
+            status_code=200,
+            json={"result": "success"},
+            request=httpx.Request(str(method), endpoint),
+        )
+
+    from dify_client import _clientx
+
+    monkeypatch.setattr(_clientx._httpx_client, "request", fake_request)
+    client = Client(api_key="token", api_base="https://api.example.com/v1")
+    response = client.stop_workflows("task-1", models.StopRequest(user="u1"))
+    assert captured["endpoint"] == "https://api.example.com/v1/workflows/tasks/task-1/stop"
+    assert response.result == "success"
+
+
+def test_audio_to_text_and_text_to_audio(monkeypatch):
+    calls = []
+
+    def fake_request(method, endpoint, **kwargs):
+        calls.append((str(method), endpoint, kwargs))
+        if endpoint.endswith("/audio-to-text"):
+            return httpx.Response(
+                status_code=200,
+                json={"text": "hello"},
+                request=httpx.Request(str(method), endpoint),
+            )
+        return httpx.Response(
+            status_code=200,
+            content=b"mp3-bytes",
+            request=httpx.Request(str(method), endpoint),
+            headers={"content-type": "audio/mpeg"},
+        )
+
+    from dify_client import _clientx
+
+    monkeypatch.setattr(_clientx._httpx_client, "request", fake_request)
+    client = Client(api_key="token", api_base="https://api.example.com/v1")
+
+    audio_to_text = client.audio_to_text(("a.wav", b"abc", "audio/wav"), models.AudioToTextRequest(user="u1"))
+    assert audio_to_text.text == "hello"
+
+    audio = client.text_to_audio(models.TextToAudioRequest(text="hello", user="u1"))
+    assert audio == b"mp3-bytes"
+    assert calls[0][1].endswith("/audio-to-text")
+    assert calls[1][1].endswith("/text-to-audio")
