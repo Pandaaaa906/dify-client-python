@@ -41,16 +41,17 @@ ENDPOINT_STOP_CHAT_MESSAGES = "/chat-messages/{task_id}/stop"
 # workflow
 ENDPOINT_RUN_WORKFLOWS = "/workflows/run"
 ENDPOINT_STOP_WORKFLOWS = "/workflows/tasks/{task_id}/stop"
+ENDPOINT_STOP_WORKFLOWS_LEGACY = "/workflows/{task_id}/stop"
 # audio <-> text
 ENDPOINT_TEXT_TO_AUDIO = "/text-to-audio"
 ENDPOINT_AUDIO_TO_TEXT = "/audio-to-text"
 
 
 def _completion_request_payload(req: models.CompletionRequest) -> Dict[str, Any]:
-    # Keep compatibility with historical `conversation_id` usage while matching
-    # current runtime payload shape.
     payload = req.model_dump(exclude_none=True)
-    payload.pop("conversation_id", None)
+    conversation_id = payload.get("conversation_id")
+    if conversation_id in ("", None):
+        payload.pop("conversation_id", None)
     return payload
 
 
@@ -358,7 +359,13 @@ class Client(BaseModel):
         Returns:
             A `StopResponse` object indicating the success of the operation.
         """
-        return self._stop_stream(self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id), req, **kwargs)
+        endpoint = self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id)
+        try:
+            return self._stop_stream(endpoint, req, **kwargs)
+        except errors.DifyResourceNotFound:
+            # Backward compatibility for older Dify runtime route.
+            legacy_endpoint = self._prepare_url(ENDPOINT_STOP_WORKFLOWS_LEGACY, task_id=task_id)
+            return self._stop_stream(legacy_endpoint, req, **kwargs)
 
     def _stop_stream(self, endpoint: str, req: models.StopRequest, **kwargs) -> models.StopResponse:
         response = self.request(
@@ -680,7 +687,13 @@ class AsyncClient(BaseModel):
         Returns:
             A `StopResponse` object indicating the success of the operation.
         """
-        return await self._astop_stream(self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id), req, **kwargs)
+        endpoint = self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id)
+        try:
+            return await self._astop_stream(endpoint, req, **kwargs)
+        except errors.DifyResourceNotFound:
+            # Backward compatibility for older Dify runtime route.
+            legacy_endpoint = self._prepare_url(ENDPOINT_STOP_WORKFLOWS_LEGACY, task_id=task_id)
+            return await self._astop_stream(legacy_endpoint, req, **kwargs)
 
     async def _astop_stream(self, endpoint: str, req: models.StopRequest, **kwargs) -> models.StopResponse:
         response = await self.arequest(

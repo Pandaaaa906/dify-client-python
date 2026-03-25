@@ -9,6 +9,8 @@ class CompletionRequest(BaseModel):
     inputs: Dict[str, Any] = Field(default_factory=dict)
     # Legacy field. Prefer passing query in `inputs`.
     query: Optional[str] = ""
+    # Legacy field kept for compatibility with older Dify completion apps.
+    conversation_id: Optional[str] = ""
     response_mode: ResponseMode
     user: str
     files: List[File] = Field(default_factory=list)

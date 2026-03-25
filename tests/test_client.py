@@ -102,6 +102,35 @@ def test_stop_workflows_uses_latest_tasks_endpoint(monkeypatch):
     assert response.result == "success"
 
 
+def test_stop_workflows_falls_back_to_legacy_endpoint(monkeypatch):
+    calls = []
+
+    def fake_request(method, endpoint, **kwargs):
+        calls.append(endpoint)
+        if endpoint.endswith("/workflows/tasks/task-1/stop"):
+            return httpx.Response(
+                status_code=404,
+                json={"status": 404, "code": "not_found", "message": "not found"},
+                request=httpx.Request(str(method), endpoint),
+            )
+        return httpx.Response(
+            status_code=200,
+            json={"result": "success"},
+            request=httpx.Request(str(method), endpoint),
+        )
+
+    from dify_client import _clientx
+
+    monkeypatch.setattr(_clientx._httpx_client, "request", fake_request)
+    client = Client(api_key="token", api_base="https://api.example.com/v1")
+    response = client.stop_workflows("task-1", models.StopRequest(user="u1"))
+    assert calls == [
+        "https://api.example.com/v1/workflows/tasks/task-1/stop",
+        "https://api.example.com/v1/workflows/task-1/stop",
+    ]
+    assert response.result == "success"
+
+
 def test_audio_to_text_and_text_to_audio(monkeypatch):
     calls = []
 
@@ -132,3 +161,51 @@ def test_audio_to_text_and_text_to_audio(monkeypatch):
     assert audio == b"mp3-bytes"
     assert calls[0][1].endswith("/audio-to-text")
     assert calls[1][1].endswith("/text-to-audio")
+
+
+def test_completion_messages_payload_keeps_non_empty_legacy_conversation_id(monkeypatch):
+    payloads = []
+
+    def fake_request(method, endpoint, **kwargs):
+        payloads.append(kwargs.get("json"))
+        return httpx.Response(
+            status_code=200,
+            json={
+                "message_id": "m1",
+                "mode": "completion",
+                "answer": "ok",
+                "metadata": {
+                    "usage": {
+                        "prompt_tokens": 1,
+                        "completion_tokens": 1,
+                        "total_tokens": 2,
+                        "prompt_unit_price": "0",
+                        "prompt_price_unit": "0",
+                        "prompt_price": "0",
+                        "completion_unit_price": "0",
+                        "completion_price_unit": "0",
+                        "completion_price": "0",
+                        "total_price": "0",
+                        "currency": "USD",
+                        "latency": 0.1,
+                    },
+                    "retriever_resources": [],
+                },
+                "created_at": 1,
+            },
+            request=httpx.Request(str(method), endpoint),
+        )
+
+    from dify_client import _clientx
+
+    monkeypatch.setattr(_clientx._httpx_client, "request", fake_request)
+    client = Client(api_key="token", api_base="https://api.example.com/v1")
+    req = models.CompletionRequest(
+        inputs={"query": "hi"},
+        query="hi",
+        response_mode=models.ResponseMode.BLOCKING,
+        user="u1",
+        conversation_id="conv-1",
+    )
+    client.completion_messages(req)
+    assert payloads[0]["conversation_id"] == "conv-1"
