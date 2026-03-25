@@ -342,7 +342,7 @@ class Client(BaseModel):
         return models.StopResponse(**response.json())
 
     def _prepare_url(self, endpoint: str, **kwargs) -> str:
-        return self.api_base + endpoint.format(**kwargs)
+        return f"{self.api_base.rstrip('/')}/{endpoint.format(**kwargs).lstrip('/')}"
 
     def _prepare_auth_headers(self, headers: Dict[str, str]):
         if "authorization" not in (key.lower() for key in headers.keys()):
@@ -644,7 +644,7 @@ class AsyncClient(BaseModel):
         return models.StopResponse(**response.json())
 
     def _prepare_url(self, endpoint: str, **kwargs) -> str:
-        return self.api_base + endpoint.format(**kwargs)
+        return f"{self.api_base.rstrip('/')}/{endpoint.format(**kwargs).lstrip('/')}"
 
     def _prepare_auth_headers(self, headers: Dict[str, str]):
         if "authorization" not in (key.lower() for key in headers.keys()):

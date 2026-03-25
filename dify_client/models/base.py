@@ -5,13 +5,15 @@ except ImportError:
 from http import HTTPStatus
 from typing import Optional, List
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Mode(StrEnum):
     CHAT = "chat"
     COMPLETION = "completion"
+    ADVANCED_CHAT = "advanced-chat"
     ADAVANCED_CHAT = "advanced-chat"
+
 
 class ResponseMode(StrEnum):
     STREAMING = 'streaming'
@@ -76,7 +78,7 @@ class RetrieverResource(BaseModel):
 
 class Metadata(BaseModel):
     usage: Usage
-    retriever_resources: List[RetrieverResource] = []
+    retriever_resources: List[RetrieverResource] = Field(default_factory=list)
 
 
 class StopRequest(BaseModel):

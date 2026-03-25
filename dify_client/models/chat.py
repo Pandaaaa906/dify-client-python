@@ -12,7 +12,7 @@ class ChatRequest(BaseModel):
     response_mode: ResponseMode
     user: str
     conversation_id: Optional[str] = ""
-    files: List[File] = []
+    files: List[File] = Field(default_factory=list)
     auto_generate_name: bool = True
 
 
@@ -26,4 +26,4 @@ class ChatSuggestRequest(BaseModel):
 
 class ChatSuggestResponse(BaseModel):
     result: str
-    data: List[str] = []
+    data: List[str] = Field(default_factory=list)

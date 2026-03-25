@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from dify_client.models.base import CompletionInputs, ResponseMode, File, Metadata, Mode
 
@@ -10,7 +10,7 @@ class CompletionRequest(BaseModel):
     response_mode: ResponseMode
     user: str
     conversation_id: Optional[str] = ""
-    files: List[File] = []
+    files: List[File] = Field(default_factory=list)
 
 
 class CompletionResponse(BaseModel):

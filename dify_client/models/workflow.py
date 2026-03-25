@@ -4,7 +4,7 @@ except ImportError:
     from strenum import StrEnum
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from dify_client.models.base import ResponseMode, File
 
@@ -25,7 +25,7 @@ class ExecutionMetadata(BaseModel):
 class WorkflowStartedData(BaseModel):
     id: str  # workflow run id
     workflow_id: str  # workflow id
-    sequence_number: int | None = None
+    sequence_number: Optional[int] = None
     inputs: Optional[dict] = None
     created_at: int  # unix timestamp seconds
 
@@ -39,7 +39,7 @@ class NodeStartedData(BaseModel):
     predecessor_node_id: Optional[str] = None
     inputs: Optional[dict] = None
     created_at: int
-    extras: dict = {}
+    extras: dict = Field(default_factory=dict)
 
 
 class NodeFinishedData(BaseModel):
@@ -51,14 +51,14 @@ class NodeFinishedData(BaseModel):
     predecessor_node_id: Optional[str] = None
     inputs: Optional[dict] = None
     process_data: Optional[dict] = None
-    outputs: Optional[dict] = {}
+    outputs: Optional[dict] = Field(default_factory=dict)
     status: WorkflowStatus
     error: Optional[str] = None
     elapsed_time: Optional[float]  # seconds
     execution_metadata: Optional[ExecutionMetadata] = None
     created_at: int
     finished_at: int
-    files: List = []
+    files: List = Field(default_factory=list)
 
 
 class WorkflowFinishedData(BaseModel):
@@ -73,16 +73,16 @@ class WorkflowFinishedData(BaseModel):
     total_steps: Optional[int] = 0
     created_at: int
     finished_at: int
-    created_by: dict = {}
-    files: List = []
+    created_by: dict = Field(default_factory=dict)
+    files: List = Field(default_factory=list)
 
 
 class WorkflowsRunRequest(BaseModel):
-    inputs: Dict = {}
+    inputs: Dict = Field(default_factory=dict)
     response_mode: ResponseMode
     user: str
     conversation_id: Optional[str] = ""
-    files: List[File] = []
+    files: List[File] = Field(default_factory=list)
 
 
 class WorkflowsRunResponse(BaseModel):

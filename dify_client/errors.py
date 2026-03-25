@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Union
+from typing import Any, Dict, Union
 
 import httpx
 import httpx_sse
@@ -109,18 +109,49 @@ SPEC_CODE_ERRORS = {
 }
 
 
+def _build_error_response(response: httpx.Response) -> models.ErrorResponse:
+    fallback_message = response.text or response.reason_phrase or "Request failed"
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {}
+
+    if not isinstance(payload, dict):
+        payload = {}
+    if "status" not in payload:
+        payload["status"] = response.status_code
+    if not payload.get("code"):
+        payload["code"] = ""
+    if not payload.get("message"):
+        payload["message"] = fallback_message
+    return models.ErrorResponse(**payload)
+
+
+def _build_error_stream_response(response: httpx_sse.ServerSentEvent) -> models.ErrorStreamResponse:
+    try:
+        payload: Dict[str, Any] = response.json()
+    except ValueError:
+        payload = {}
+
+    if not isinstance(payload, dict):
+        payload = {}
+    payload.setdefault("event", response.event or models.StreamEvent.ERROR.value)
+    if not payload.get("message"):
+        payload["message"] = response.data or ""
+    if not payload.get("code"):
+        payload["code"] = ""
+    return models.ErrorStreamResponse(**payload)
+
+
 def raise_for_status(response: Union[httpx.Response, httpx_sse.ServerSentEvent]):
     if isinstance(response, httpx.Response):
         if response.is_success:
             return
-        json = response.json()
-        if "status" not in json:
-            json["status"] = response.status_code
-        details = models.ErrorResponse(**json)
+        details = _build_error_response(response)
     elif isinstance(response, httpx_sse.ServerSentEvent):
         if response.event != models.StreamEvent.ERROR.value:
             return
-        details = models.ErrorStreamResponse(**response.json())
+        details = _build_error_stream_response(response)
     else:
         raise ValueError(f"Invalid dify response type: {type(response)}")
 

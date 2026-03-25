@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -12,20 +12,20 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/haoyuhu/dify-client-python",
-    license='MIT',
-    packages=['dify_client'],
+    license="MIT",
+    packages=find_packages(exclude=("tests", "tests.*")),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     install_requires=[
         "httpx",
         "httpx-sse",
-        "pydantic",
+        "pydantic>=2,<3",
         "StrEnum",
     ],
-    keywords='dify nlp ai language-processing',
+    keywords="dify nlp ai language-processing",
     include_package_data=True,
 )

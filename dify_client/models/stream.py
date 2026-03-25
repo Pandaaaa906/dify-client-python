@@ -4,7 +4,7 @@ except ImportError:
     from strenum import StrEnum
 from typing import Union, Optional, List
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dify_client import utils
 from dify_client.models.base import Metadata, ErrorResponse
@@ -42,7 +42,7 @@ class StreamEvent(StrEnum):
 class StreamResponse(BaseModel):
     model_config = ConfigDict(extra='allow')
 
-    event: StreamEvent | str
+    event: Union[StreamEvent, str]
     task_id: Optional[str] = ""
 
     @field_validator("event", mode="before")
@@ -89,7 +89,7 @@ class AgentThoughtStreamResponse(StreamResponse):
     observation: str
     tool: str
     tool_input: str
-    message_files: List[str] = []
+    message_files: List[str] = Field(default_factory=list)
     created_at: int  # unix timestamp seconds
 
 
