@@ -17,15 +17,15 @@ class WorkflowStatus(StrEnum):
 
 
 class ExecutionMetadata(BaseModel):
-    total_tokens: Optional[int]
-    total_price: Optional[str]
-    currency: Optional[str]
+    total_tokens: Optional[int] = None
+    total_price: Optional[str] = None
+    currency: Optional[str] = None
 
 
 class WorkflowStartedData(BaseModel):
     id: str  # workflow run id
     workflow_id: str  # workflow id
-    sequence_number: int
+    sequence_number: int | None = None
     inputs: Optional[dict] = None
     created_at: int  # unix timestamp seconds
 
@@ -66,10 +66,10 @@ class WorkflowFinishedData(BaseModel):
     workflow_id: str  # workflow id
     sequence_number: int
     status: WorkflowStatus
-    outputs: Optional[dict]
-    error: Optional[str]
-    elapsed_time: Optional[float]
-    total_tokens: Optional[int]
+    outputs: Optional[dict] = None
+    error: Optional[str] = None
+    elapsed_time: Optional[float] = None
+    total_tokens: Optional[int] = None
     total_steps: Optional[int] = 0
     created_at: int
     finished_at: int
