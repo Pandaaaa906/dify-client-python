@@ -1,155 +1,124 @@
 # dify-client-python
 
-Welcome to the `dify-client-python` repository! This Python package provides a convenient and powerful interface to
-interact with the Dify API, enabling developers to integrate a wide range of features into their applications with ease.
+`dify-client-python` is a typed Python SDK for Dify Runtime APIs, covering chat, completion, workflow, file upload, feedback, and audio conversion endpoints.
 
-## Main Features
+## Requirements
 
-* **Synchronous and Asynchronous Support**: The client offers both synchronous and asynchronous methods, allowing for
-  flexible integration into various Python codebases and frameworks.
-* **Stream and Non-stream Support**: Seamlessly work with both streaming and non-streaming endpoints of the Dify API for
-  real-time and batch processing use cases.
-* **Comprehensive Endpoint Coverage**: Support completion, chat, workflows, feedback, file uploads, etc., the client
-  covers all available Dify API endpoints.
+- Python `>=3.8`
+- Dify Runtime API (cloud or self-hosted) compatible with `/v1` endpoints
 
 ## Installation
-
-Before using the `dify-client-python` client, you'll need to install it. You can easily install it using `pip`:
 
 ```bash
 pip install dify-client-python
 ```
 
-## Quick Start
+## What Is Supported
 
-Here's a quick example of how you can use the Dify Client to send a chat message.
+- Sync and async clients: `Client`, `AsyncClient`
+- Blocking and streaming response modes
+- Chat and completion message APIs
+- Workflow run/stream/stop APIs
+- File upload APIs
+- Message feedback and suggestion APIs
+- Audio APIs:
+  - `audio-to-text`
+  - `text-to-audio`
+- Updated stream event support for newer workflow/chatflow runtimes:
+  - `workflow_paused`, `iteration_*`, `loop_*`, `text_chunk`, `text_replace`
+  - `human_input_*`, `node_retry`, `agent_log`, `tts_message`
+
+## Quick Start (Sync)
 
 ```python
 import uuid
 from dify_client import Client, models
 
-# Initialize the client with your API key
 client = Client(
     api_key="your-api-key",
-    api_base="http://localhost/v1",
+    api_base="https://api.dify.ai/v1",
 )
 user = str(uuid.uuid4())
 
-# Create a blocking chat request
-blocking_chat_req = models.ChatRequest(
-    query="Hi, dify-client-python!",
-    inputs={"city": "Beijing"},
+req = models.ChatRequest(
+    query="Hello from dify-client-python",
+    inputs={},
     user=user,
     response_mode=models.ResponseMode.BLOCKING,
 )
 
-# Send the chat message
-chat_response = client.chat_messages(blocking_chat_req, timeout=60.)
-print(chat_response)
+res = client.chat_messages(req, timeout=60.0)
+print(res.answer)
+```
 
-# Create a streaming chat request
-streaming_chat_req = models.ChatRequest(
-    query="Hi, dify-client-python!",
-    inputs={"city": "Beijing"},
+### Streaming Chat
+
+```python
+stream_req = models.ChatRequest(
+    query="Stream this answer",
+    inputs={},
     user=user,
     response_mode=models.ResponseMode.STREAMING,
 )
 
-# Send the chat message
-for chunk in client.chat_messages(streaming_chat_req, timeout=60.):
-    print(chunk)
+for event in client.chat_messages(stream_req, timeout=60.0):
+    print(event.event, getattr(event, "answer", None))
 ```
 
-For asynchronous operations, use the `AsyncClient` in a similar fashion:
+### Audio APIs
+
+```python
+audio_text = client.audio_to_text(
+    ("sample.wav", open("sample.wav", "rb"), "audio/wav"),
+    models.AudioToTextRequest(user=user),
+)
+print(audio_text.text)
+
+audio_bytes = client.text_to_audio(
+    models.TextToAudioRequest(text="Hello world", user=user)
+)
+with open("speech.mp3", "wb") as f:
+    f.write(audio_bytes)
+```
+
+## Quick Start (Async)
 
 ```python
 import asyncio
-import uuid
-
 from dify_client import AsyncClient, models
 
-# Initialize the async client with your API key
-async_client = AsyncClient(
-    api_key="your-api-key",
-    api_base="http://localhost/v1",
-)
+async_client = AsyncClient(api_key="your-api-key", api_base="https://api.dify.ai/v1")
 
-
-# Define an asynchronous function to send a blocking chat message with BLOCKING ResponseMode
-async def send_chat_message():
-    user = str(uuid.uuid4())
-    # Create a blocking chat request
-    blocking_chat_req = models.ChatRequest(
-        query="Hi, dify-client-python!",
-        inputs={"city": "Beijing"},
-        user=user,
-        response_mode=models.ResponseMode.BLOCKING,
-    )
-    chat_response = await async_client.achat_messages(blocking_chat_req, timeout=60.)
-    print(chat_response)
-
-
-# Define an asynchronous function to send a chat message with STREAMING ResponseMode
-async def send_chat_message_stream():
-    user = str(uuid.uuid4())
-    # Create a blocking chat request
-    streaming_chat_req = models.ChatRequest(
-        query="Hi, dify-client-python!",
-        inputs={"city": "Beijing"},
-        user=user,
+async def main():
+    req = models.ChatRequest(
+        query="hello",
+        inputs={},
+        user="user-1",
         response_mode=models.ResponseMode.STREAMING,
     )
-    async for chunk in await async_client.achat_messages(streaming_chat_req, timeout=60.):
-        print(chunk)
+    async for chunk in await async_client.achat_messages(req, timeout=60.0):
+        print(chunk.event)
 
-
-# Run the asynchronous function
-asyncio.gather(send_chat_message(), send_chat_message_stream())
+asyncio.run(main())
 ```
 
-## Documentation
+## Security Notes
 
-For detailed information on all the functionalities and how to use each endpoint, please refer to the official Dify API
-documentation. This will provide you with comprehensive guidance on request and response structures, error handling, and
-other important details.
+- Do not hardcode production API keys in source code.
+- Prefer environment variables or secret managers for `api_key`.
+- The SDK injects `Authorization: Bearer ...` headers, but does not log keys by default.
+- If you add your own logging middleware around requests, redact `Authorization` headers.
 
-## Contributing
+## Development
 
-Contributions are welcome! If you would like to contribute to the `dify-client-python`, please feel free to make a pull
-request or open an issue to discuss potential changes.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-```text
-MIT License
-
-Copyright (c) 2024 haoyuhu
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
+```bash
+python -m pip install -e . pytest pytest-cov flake8 build twine setuptools wheel
+python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+python -m pytest -q --cov=dify_client --cov-report=term-missing
+python -m build --no-isolation
+python -m twine check --strict dist/*
 ```
 
-## Support
+## Release
 
-If you encounter any issues or have questions regarding the usage of this client, please reach out to the Dify Client
-support team.
-
-Happy coding! 🚀
+Use [RELEASE.md](./RELEASE.md) for the release checklist and commands.

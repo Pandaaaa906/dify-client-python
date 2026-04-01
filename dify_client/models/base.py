@@ -5,12 +5,13 @@ except ImportError:
 from http import HTTPStatus
 from typing import Optional, List
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Mode(StrEnum):
     CHAT = "chat"
     COMPLETION = "completion"
+    ADVANCED_CHAT = "advanced-chat"
     ADAVANCED_CHAT = "advanced-chat"
 
 
@@ -22,6 +23,9 @@ class ResponseMode(StrEnum):
 class FileType(StrEnum):
     IMAGE = "image"
     DOCUMENT = "document"
+    AUDIO = "audio"
+    VIDEO = "video"
+    CUSTOM = "custom"
 
 
 class TransferMethod(StrEnum):
@@ -35,8 +39,9 @@ class TransferMethod(StrEnum):
 # The text generation application requires at least one key/value pair to be inputted.
 class CompletionInputs(BaseModel):
     model_config = ConfigDict(extra="allow")
-    # Required The input text, the content to be processed.
-    query: str
+    # Legacy field. In newer applications, query should be passed in the
+    # input mapping as a regular variable.
+    query: Optional[str] = ""
 
 
 class File(BaseModel):
@@ -78,7 +83,7 @@ class RetrieverResource(BaseModel):
 
 class Metadata(BaseModel):
     usage: Usage
-    retriever_resources: List[RetrieverResource] = []
+    retriever_resources: List[RetrieverResource] = Field(default_factory=list)
 
 
 class StopRequest(BaseModel):

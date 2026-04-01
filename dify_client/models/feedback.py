@@ -15,6 +15,7 @@ class Rating(StrEnum):
 class FeedbackRequest(BaseModel):
     rating: Optional[Rating] = None
     user: str
+    content: Optional[str] = None
 
 
 class FeedbackResponse(BaseModel):

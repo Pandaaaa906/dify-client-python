@@ -7,16 +7,13 @@ except ImportError:
 try:
     from http import HTTPMethod
 except ImportError:
-
     class HTTPMethod(StrEnum):
         GET = "GET"
         POST = "POST"
         PUT = "PUT"
         DELETE = "DELETE"
 
-
 import httpx
-
 # noinspection PyProtectedMember
 import httpx._types as types
 from httpx_sse import connect_sse, ServerSentEvent, aconnect_sse
@@ -42,10 +39,19 @@ ENDPOINT_CHAT_MESSAGES = "/chat-messages"
 ENDPOINT_STOP_CHAT_MESSAGES = "/chat-messages/{task_id}/stop"
 # workflow
 ENDPOINT_RUN_WORKFLOWS = "/workflows/run"
-ENDPOINT_STOP_WORKFLOWS = "/workflows/{task_id}/stop"
+ENDPOINT_STOP_WORKFLOWS = "/workflows/tasks/{task_id}/stop"
+ENDPOINT_STOP_WORKFLOWS_LEGACY = "/workflows/{task_id}/stop"
 # audio <-> text
 ENDPOINT_TEXT_TO_AUDIO = "/text-to-audio"
 ENDPOINT_AUDIO_TO_TEXT = "/audio-to-text"
+
+
+def _completion_request_payload(req: models.CompletionRequest) -> Dict[str, Any]:
+    payload = req.model_dump(exclude_none=True)
+    conversation_id = payload.get("conversation_id")
+    if conversation_id in ("", None):
+        payload.pop("conversation_id", None)
+    return payload
 
 
 class Client(BaseModel):
@@ -226,11 +232,31 @@ class Client(BaseModel):
         response = self.request(
             self._prepare_url(ENDPOINT_FILES_UPLOAD),
             HTTPMethod.POST,
-            data=req.model_dump(),
+            data=req.model_dump(exclude_none=True),
             files=[("file", file)],
             **kwargs,
         )
         return models.UploadFileResponse(**response.json())
+
+    def audio_to_text(self, file: types.FileTypes, req: models.AudioToTextRequest,
+                      **kwargs) -> models.AudioToTextResponse:
+        response = self.request(
+            self._prepare_url(ENDPOINT_AUDIO_TO_TEXT),
+            HTTPMethod.POST,
+            data=req.model_dump(exclude_none=True),
+            files=[("file", file)],
+            **kwargs,
+        )
+        return models.AudioToTextResponse(**response.json())
+
+    def text_to_audio(self, req: models.TextToAudioRequest, **kwargs) -> bytes:
+        response = self.request(
+            self._prepare_url(ENDPOINT_TEXT_TO_AUDIO),
+            HTTPMethod.POST,
+            json=req.model_dump(exclude_none=True),
+            **kwargs,
+        )
+        return response.content
 
     def completion_messages(
         self, req: models.CompletionRequest, **kwargs
@@ -255,7 +281,7 @@ class Client(BaseModel):
         response = self.request(
             self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=_completion_request_payload(req),
             **kwargs,
         )
         return models.CompletionResponse(**response.json())
@@ -266,7 +292,7 @@ class Client(BaseModel):
         event_source = self.request_stream(
             self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=_completion_request_payload(req),
             **kwargs,
         )
         for sse in event_source:
@@ -366,7 +392,7 @@ class Client(BaseModel):
         response = self.request(
             self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=req.model_dump(exclude_none=True),
             **kwargs,
         )
         return models.WorkflowsRunResponse(**response.json())
@@ -377,7 +403,7 @@ class Client(BaseModel):
         event_source = self.request_stream(
             self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=req.model_dump(exclude_none=True),
             **kwargs,
         )
         for sse in event_source:
@@ -392,9 +418,13 @@ class Client(BaseModel):
         Returns:
             A `StopResponse` object indicating the success of the operation.
         """
-        return self._stop_stream(
-            self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id), req, **kwargs
-        )
+        endpoint = self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id)
+        try:
+            return self._stop_stream(endpoint, req, **kwargs)
+        except errors.DifyResourceNotFound:
+            # Backward compatibility for older Dify runtime route.
+            legacy_endpoint = self._prepare_url(ENDPOINT_STOP_WORKFLOWS_LEGACY, task_id=task_id)
+            return self._stop_stream(legacy_endpoint, req, **kwargs)
 
     def _stop_stream(
         self, endpoint: str, req: models.StopRequest, **kwargs
@@ -408,7 +438,7 @@ class Client(BaseModel):
         return models.StopResponse(**response.json())
 
     def _prepare_url(self, endpoint: str, **kwargs) -> str:
-        return self.api_base + endpoint.format(**kwargs)
+        return f"{self.api_base.rstrip('/')}/{endpoint.format(**kwargs).lstrip('/')}"
 
     def _prepare_auth_headers(self, headers: Dict[str, str]):
         if "authorization" not in (key.lower() for key in headers.keys()):
@@ -596,11 +626,31 @@ class AsyncClient(BaseModel):
         response = await self.arequest(
             self._prepare_url(ENDPOINT_FILES_UPLOAD),
             HTTPMethod.POST,
-            data=req.model_dump(),
+            data=req.model_dump(exclude_none=True),
             files=[("file", file)],
             **kwargs,
         )
         return models.UploadFileResponse(**response.json())
+
+    async def aaudio_to_text(self, file: types.FileTypes, req: models.AudioToTextRequest, **kwargs) \
+            -> models.AudioToTextResponse:
+        response = await self.arequest(
+            self._prepare_url(ENDPOINT_AUDIO_TO_TEXT),
+            HTTPMethod.POST,
+            data=req.model_dump(exclude_none=True),
+            files=[("file", file)],
+            **kwargs,
+        )
+        return models.AudioToTextResponse(**response.json())
+
+    async def atext_to_audio(self, req: models.TextToAudioRequest, **kwargs) -> bytes:
+        response = await self.arequest(
+            self._prepare_url(ENDPOINT_TEXT_TO_AUDIO),
+            HTTPMethod.POST,
+            json=req.model_dump(exclude_none=True),
+            **kwargs,
+        )
+        return response.content
 
     async def acompletion_messages(
         self, req: models.CompletionRequest, **kwargs
@@ -627,7 +677,7 @@ class AsyncClient(BaseModel):
         response = await self.arequest(
             self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=_completion_request_payload(req),
             **kwargs,
         )
         return models.CompletionResponse(**response.json())
@@ -638,7 +688,7 @@ class AsyncClient(BaseModel):
         async for sse in self.arequest_stream(
             self._prepare_url(ENDPOINT_COMPLETION_MESSAGES),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=_completion_request_payload(req),
             **kwargs,
         ):
             yield models.build_completion_stream_response(sse.json())
@@ -738,7 +788,7 @@ class AsyncClient(BaseModel):
         response = await self.arequest(
             self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=req.model_dump(exclude_none=True),
             **kwargs,
         )
         return models.WorkflowsRunResponse(**response.json())
@@ -749,7 +799,7 @@ class AsyncClient(BaseModel):
         async for sse in self.arequest_stream(
             self._prepare_url(ENDPOINT_RUN_WORKFLOWS),
             HTTPMethod.POST,
-            json=req.model_dump(),
+            json=req.model_dump(exclude_none=True),
             **kwargs,
         ):
             yield models.build_workflows_stream_response(sse.json())
@@ -763,9 +813,13 @@ class AsyncClient(BaseModel):
         Returns:
             A `StopResponse` object indicating the success of the operation.
         """
-        return await self._astop_stream(
-            self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id), req, **kwargs
-        )
+        endpoint = self._prepare_url(ENDPOINT_STOP_WORKFLOWS, task_id=task_id)
+        try:
+            return await self._astop_stream(endpoint, req, **kwargs)
+        except errors.DifyResourceNotFound:
+            # Backward compatibility for older Dify runtime route.
+            legacy_endpoint = self._prepare_url(ENDPOINT_STOP_WORKFLOWS_LEGACY, task_id=task_id)
+            return await self._astop_stream(legacy_endpoint, req, **kwargs)
 
     async def _astop_stream(
         self, endpoint: str, req: models.StopRequest, **kwargs
@@ -779,7 +833,7 @@ class AsyncClient(BaseModel):
         return models.StopResponse(**response.json())
 
     def _prepare_url(self, endpoint: str, **kwargs) -> str:
-        return self.api_base + endpoint.format(**kwargs)
+        return f"{self.api_base.rstrip('/')}/{endpoint.format(**kwargs).lstrip('/')}"
 
     def _prepare_auth_headers(self, headers: Dict[str, str]):
         if "authorization" not in (key.lower() for key in headers.keys()):

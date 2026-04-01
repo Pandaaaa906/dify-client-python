@@ -2,9 +2,9 @@ try:
     from enum import StrEnum
 except ImportError:
     from strenum import StrEnum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from dify_client.models.base import ResponseMode, File
 
@@ -14,20 +14,24 @@ class WorkflowStatus(StrEnum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     STOPPED = "stopped"
+    PARTIAL_SUCCEEDED = "partial-succeeded"
+    PAUSED = "paused"
+    EXCEPTION = "exception"
 
 
 class ExecutionMetadata(BaseModel):
     total_tokens: Optional[int] = None
-    total_price: Optional[str] = None
+    total_price: Optional[float] = None
     currency: Optional[str] = None
 
 
 class WorkflowStartedData(BaseModel):
     id: str  # workflow run id
     workflow_id: str  # workflow id
-    sequence_number: int | None = None
-    inputs: Optional[dict] = None
+    sequence_number: Optional[int] = None
+    inputs: Optional[Dict[str, Any]] = None
     created_at: int  # unix timestamp seconds
+    reason: Optional[str] = None
 
 
 class NodeStartedData(BaseModel):
@@ -37,9 +41,12 @@ class NodeStartedData(BaseModel):
     title: str
     index: int
     predecessor_node_id: Optional[str] = None
-    inputs: Optional[dict] = None
+    inputs: Optional[Dict[str, Any]] = None
+    inputs_truncated: Optional[bool] = None
     created_at: int
-    extras: dict = {}
+    extras: Dict[str, Any] = Field(default_factory=dict)
+    iteration_id: Optional[str] = None
+    loop_id: Optional[str] = None
 
 
 class NodeFinishedData(BaseModel):
@@ -49,43 +56,51 @@ class NodeFinishedData(BaseModel):
     title: str
     index: int
     predecessor_node_id: Optional[str] = None
-    inputs: Optional[dict] = None
-    process_data: Optional[dict] = None
-    outputs: Optional[dict] = {}
+    inputs: Optional[Dict[str, Any]] = None
+    inputs_truncated: Optional[bool] = None
+    process_data: Optional[Dict[str, Any]] = None
+    process_data_truncated: Optional[bool] = None
+    outputs: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    outputs_truncated: Optional[bool] = None
     status: WorkflowStatus
     error: Optional[str] = None
     elapsed_time: Optional[float]  # seconds
     execution_metadata: Optional[ExecutionMetadata] = None
     created_at: int
     finished_at: int
-    files: List = []
+    files: List[Dict[str, Any]] = Field(default_factory=list)
+    iteration_id: Optional[str] = None
+    loop_id: Optional[str] = None
+    retry_index: Optional[int] = None
 
 
 class WorkflowFinishedData(BaseModel):
     id: str  # workflow run id
     workflow_id: str  # workflow id
-    sequence_number: int
+    sequence_number: Optional[int] = None
     status: WorkflowStatus
-    outputs: Optional[dict] = None
+    outputs: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     elapsed_time: Optional[float] = None
     total_tokens: Optional[int] = None
     total_steps: Optional[int] = 0
     created_at: int
-    finished_at: int
-    created_by: dict = {}
-    files: List = []
+    finished_at: Optional[int] = None
+    created_by: Dict[str, Any] = Field(default_factory=dict)
+    exceptions_count: Optional[int] = None
+    files: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class WorkflowsRunRequest(BaseModel):
-    inputs: Dict = {}
+    inputs: Dict[str, Any] = Field(default_factory=dict)
     response_mode: ResponseMode
     user: str
-    conversation_id: Optional[str] = ""
-    files: List[File] = []
+    files: List[File] = Field(default_factory=list)
 
 
 class WorkflowsRunResponse(BaseModel):
-    log_id: str
+    workflow_run_id: Optional[str] = None
+    # Backward compatibility with older API responses.
+    log_id: Optional[str] = None
     task_id: str
     data: WorkflowFinishedData

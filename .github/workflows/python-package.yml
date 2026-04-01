@@ -40,3 +40,12 @@ jobs:
       run: |
         ruff check .
         ruff format --check .
+
+    - name: Test with pytest
+      run: |
+        pytest
+
+    - name: Build and verify package
+      run: |
+        python -m build --no-isolation
+        python -m twine check --strict dist/*
