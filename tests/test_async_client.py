@@ -65,10 +65,8 @@ async def test_arequest_injects_authorization(monkeypatch):
             request=httpx.Request(str(method), endpoint),
         )
 
-    from dify_client import _clientx
-
-    monkeypatch.setattr(_clientx._async_httpx_client, "request", fake_request)
     client = AsyncClient(api_key="token", api_base="https://api.example.com/v1")
+    monkeypatch.setattr(client._async_httpx_client, "request", fake_request)
     await client.arequest(client._prepare_url("/chat-messages"), "GET")
     assert captured["endpoint"] == "https://api.example.com/v1/chat-messages"
     assert captured["headers"]["Authorization"] == "Bearer token"
